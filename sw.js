@@ -1,7 +1,7 @@
 /* 天竺按摩打卡 · 离线缓存 Service Worker (v4)
    策略: 页面文档网络优先(更新即时生效, 断网回退缓存); 其余资源缓存优先 */
 "use strict";
-var CACHE = "tz18-v4";
+var CACHE = "tz18-v5";
 var ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", function (e) {

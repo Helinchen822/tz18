@@ -94,6 +94,7 @@
   .dursel{display:flex;justify-content:center;gap:8px;margin-bottom:8px}
   .dursel span{font-size:12px;border:1px solid var(--line);border-radius:12px;padding:3px 10px;color:var(--sub);cursor:pointer}
   .dursel span.on{border-color:var(--red);color:var(--red);background:var(--red-soft)}
+  #autoToggle.auto-on{border-color:var(--red);color:var(--red);background:var(--red-soft)}
   /* ---------- 记录页 ---------- */
   .cal{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px}
   .cal .cal-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:14px}
@@ -130,7 +131,7 @@
 <div id="app">
   <header>
     <h1>天竺按摩 · 十八势</h1>
-    <div class="src">《备急千金要方·卷二十七·按摩法》 · v4</div>
+    <div class="src">《备急千金要方·卷二十七·按摩法》 · v5</div>
   </header>
 
   <!-- ================= 今日 ================= -->
@@ -206,6 +207,7 @@
         <li>数据保存在本机浏览器中(localStorage), 不上传任何服务器; 换手机或清理浏览器前请先"导出备份"。</li>
         <li>点「开始练习」进入引导模式: 每势可计时, 计时结束自动提示, 也可不计时自由练习。</li>
         <li>练习模式下自动语音播报当前势(如"第三势, 共按胫"); 点顶部「🔊 播报」可开/关, 点击大字势名可重听。</li>
+        <li>「连贯模式」开启后: 计时结束自动完成当前势、播报并进入下一势, 十八势一气呵成; 每遍结束自动暂停, 点计时环继续下一遍。</li>
         <li>注意: 手机处于静音模式时, 播报与滴声会静音; 练习时请调为响铃。</li>
         <li>在手机浏览器中可将本页"添加到主屏幕", 即可像 App 一样打开。</li>
       </ul>
@@ -214,7 +216,7 @@
         <button class="g-btn" id="testSpeak">试听语音播报</button>
       </p>
       <p style="font-size:12px;color:#a99e8a;margin-top:10px">
-        当前版本: v4 · 若无声音: 确认手机侧边静音键已关、音量已开, 再点上方按钮测试; 仍无声请彻底关闭应用重开一次。
+        当前版本: v5 · 连贯模式 · 若无声音: 确认手机侧边静音键已关、音量已开, 再点上方按钮测试; 仍无声请彻底关闭应用重开一次。
       </p>
     </div>
   </section>
@@ -249,6 +251,9 @@
     <div class="dursel" id="durSel">
       <span data-d="10">10秒</span><span data-d="15" class="on">15秒</span>
       <span data-d="20">20秒</span><span data-d="0">不计时</span>
+    </div>
+    <div style="text-align:center;margin:2px 0 8px">
+      <span id="autoToggle" style="font-size:12px;border:1px solid var(--line);border-radius:12px;padding:3px 12px;color:var(--sub);cursor:pointer;user-select:none">🔁 连贯模式 · 开</span>
     </div>
     <div class="g-ctrl">
       <button id="gPrev">上一势</button>
@@ -299,7 +304,7 @@ var QUOTES = [
 
 /* ================= 存储 ================= */
 var KEY = "tz18_v1";
-var store = {days:{}, dur:15, voice:true};
+var store = {days:{}, dur:15, voice:true, auto:true};
 function load(){
   try{
     var raw = localStorage.getItem(KEY);
@@ -410,13 +415,54 @@ function guideOpen(){
   g.total = store.dur; g.remain = g.total; g.running = false;
   document.getElementById("guide").style.display = "flex";
   renderGuide();
+  refreshAT();
+  if(autoOn()){ startTimer(); }
+}
+/* 连贯模式开关状态 */
+function autoOn(){ return store.auto !== false && g.total > 0; }
+function refreshAT(){
+  var at = document.getElementById("autoToggle");
+  if(!at) return;
+  var on = autoOn();
+  at.textContent = on ? "🔁 连贯模式 · 开" : "🔁 连贯模式 · 关";
+  at.classList.toggle("auto-on", on);
+  at.style.opacity = (g.total === 0) ? "0.45" : "1";
+}
+/* 连贯模式: 计时到自动完成当前势并进入下一势 */
+function autoAdvance(){
+  var k = todayKey(), d = getDay(k);
+  if(!d.cur[g.i]){
+    d.cur[g.i] = true;
+    d.sc[g.i] = (d.sc[g.i]||0)+1;
+    if(d.cur.every(Boolean)){
+      d.r += 1;
+      d.cur = new Array(18).fill(false);
+      save();
+      var done3 = (d.r >= 3);
+      toast(done3 ? "今日三遍圆满! 补益延年, 眼明轻健" : "第 "+d.r+" 遍完成 ✓ 还差 "+(3-d.r)+" 遍", 2400);
+      g.i = 0;
+      renderGuide(true); /* 静默渲染第一势, 不抢播报 */
+      speak(done3 ? "今日三遍圆满" : "第"+d.r+"遍完成");
+      return; /* 一遍结束, 暂停等待用户点计时环继续 */
+    }
+    save();
+  }
+  if(g.i < 17){
+    g.i++;
+    renderGuide();  /* 语音播报下一势 */
+    g.remain = g.total;
+    startTimer();
+  }else{
+    renderGuide();
+    toast("本遍尚有未完成之势, 请手动补做", 2000);
+  }
 }
 function guideClose(){
   stopTimer();
   document.getElementById("guide").style.display = "none";
   renderToday();
 }
-function renderGuide(){
+function renderGuide(silent){
   var k = todayKey(), d = getDay(k);
   var s = STANCES[g.i];
   var cn = cnNum(g.i + 1);
@@ -428,7 +474,7 @@ function renderGuide(){
   var done = d.cur.filter(Boolean).length;
   document.getElementById("gPrev").style.visibility = g.i===0 ? "hidden":"visible";
   updateTimerUI();
-  speak("第" + cn + "势, " + s.name);
+  if(!silent){ speak("第" + cn + "势, " + s.name); }
 }
 function getCtx(){
   try{
@@ -505,13 +551,19 @@ document.addEventListener("click", unlockAudio, { once:true, passive:true });
 var actx = null;
 function startTimer(){
   if(g.total===0){ toast("不计时模式 · 自由练习", 1400); return; }
+  if(g.int){ clearInterval(g.int); g.int = null; }
   g.running = true;
   tick();
   g.int = setInterval(function(){
     g.remain--;
     if(g.remain<=0){
       stopTimer(); g.remain = g.total;
-      beep(); toast("计时到 · 可换下一势", 1500);
+      beep();
+      if(autoOn()){
+        autoAdvance();
+      }else{
+        toast("计时到 · 可换下一势", 1500);
+      }
     }else{
       tick();
     }
@@ -607,18 +659,29 @@ function init(){
   document.getElementById("gName").addEventListener("click", function(){
     speak("第" + cnNum(g.i+1) + "势, " + STANCES[g.i].name);
   });
-  document.getElementById("gPrev").addEventListener("click", function(){ if(g.i>0){g.i--; renderGuide();} });
+  document.getElementById("gPrev").addEventListener("click", function(){
+    if(g.i>0){ g.i--; renderGuide(); if(autoOn()){ g.remain=g.total; startTimer(); } }
+  });
   document.getElementById("gNext").addEventListener("click", function(){
-    if(g.i<17){ g.i++; renderGuide(); } else { toast("十八势已毕", 1500); }
+    if(g.i<17){ g.i++; renderGuide(); if(autoOn()){ g.remain=g.total; startTimer(); } }
+    else{ toast("十八势已毕", 1500); }
   });
   document.getElementById("gDone").addEventListener("click", function(){
     var k = todayKey(), d = getDay(k);
     if(!d.cur[g.i]){ toggle(g.i); }
-    if(g.i<17){ g.i++; renderGuide(); }
+    if(g.i<17){
+      g.i++; renderGuide();
+      if(autoOn()){ g.remain=g.total; startTimer(); }
+    }
     else{
       var done = getDay(todayKey());
-      if(done.r>=3){ toast("今日三遍圆满!", 2200); guideClose(); }
-      else{ toast("十八势已毕, 今日还有 "+(3-done.r)+" 遍", 2200); g.i=0; renderGuide(); }
+      if(done.r>=3){ toast("今日三遍圆满!", 2200); speak("今日三遍圆满"); guideClose(); }
+      else{
+        toast("十八势已毕, 今日还有 "+(3-done.r)+" 遍", 2200);
+        speak("第"+done.r+"遍完成");
+        g.i=0; renderGuide(true);
+        if(autoOn()){ g.remain=g.total; startTimer(); }
+      }
     }
   });
   document.getElementById("timerBox").addEventListener("click", function(){
@@ -634,7 +697,21 @@ function init(){
       sp.classList.add("on");
       store.dur = parseInt(sp.getAttribute("data-d"),10);
       g.total = store.dur; g.remain = g.total; stopTimer(); updateTimerUI(); save();
+      refreshAT();
+      if(autoOn()){ startTimer(); }
     });
+  });
+  // 连贯模式开关
+  document.getElementById("autoToggle").addEventListener("click", function(){
+    if(g.total===0){ toast("不计时模式下无法自动连贯, 请先选择时长", 1800); return; }
+    store.auto = (store.auto === false);
+    save(); refreshAT();
+    if(store.auto !== false){
+      toast("连贯模式: 计时结束自动进入下一势", 1600);
+      g.remain = g.total; startTimer();
+    }else{
+      stopTimer(); toast("已切换为手动模式", 1200);
+    }
   });
   var durMatched = false;
   document.querySelectorAll("#durSel span").forEach(function(x){
