@@ -1,6 +1,6 @@
 /* 天竺按摩打卡 · 离线缓存 Service Worker */
 "use strict";
-var CACHE = "tz18-v1";
+var CACHE = "tz18-v3";
 var ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", function (e) {

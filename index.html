@@ -205,6 +205,8 @@
       <ul>
         <li>数据保存在本机浏览器中(localStorage), 不上传任何服务器; 换手机或清理浏览器前请先"导出备份"。</li>
         <li>点「开始练习」进入引导模式: 每势可计时, 计时结束自动提示, 也可不计时自由练习。</li>
+        <li>练习模式下自动语音播报当前势(如"第三势, 共按胫"); 点顶部「🔊 播报」可开/关, 点击大字势名可重听。</li>
+        <li>注意: 手机处于静音模式时, 播报与滴声会静音; 练习时请调为响铃。</li>
         <li>在手机浏览器中可将本页"添加到主屏幕", 即可像 App 一样打开。</li>
       </ul>
     </div>
@@ -221,7 +223,7 @@
 <div id="guide">
   <div class="g-top">
     <span id="gRoundLbl">今日第 1 遍</span>
-    <span>天竺按摩</span>
+    <span id="voiceToggle" style="cursor:pointer;user-select:none">🔊 播报</span>
     <span class="g-close" id="gClose">×</span>
   </div>
   <div class="g-card">
@@ -238,8 +240,8 @@
       <div class="ttxt" id="tToggle"><div class="num" id="tNum">30</div><div class="hint">点击 开始/暂停</div></div>
     </div>
     <div class="dursel" id="durSel">
-      <span data-d="15">15秒</span><span data-d="30" class="on">30秒</span>
-      <span data-d="45">45秒</span><span data-d="60">60秒</span><span data-d="0">不计时</span>
+      <span data-d="10">10秒</span><span data-d="15" class="on">15秒</span>
+      <span data-d="20">20秒</span><span data-d="0">不计时</span>
     </div>
     <div class="g-ctrl">
       <button id="gPrev">上一势</button>
@@ -290,7 +292,7 @@ var QUOTES = [
 
 /* ================= 存储 ================= */
 var KEY = "tz18_v1";
-var store = {days:{}, dur:30};
+var store = {days:{}, dur:15, voice:true};
 function load(){
   try{
     var raw = localStorage.getItem(KEY);
@@ -394,12 +396,12 @@ function toggle(i){
 }
 
 /* ================= 引导练习 ================= */
-var g = {i:0, remain:30, total:30, running:false, int:null};
+var g = {i:0, remain:15, total:15, running:false, int:null};
 var C = 2*Math.PI*66;
 function guideOpen(){
   var k = todayKey(), d = getDay(k);
   for(var i=0;i<18;i++){ if(!d.cur[i]){ g.i = i; break; } g.i = 0; }
-  g.total = store.dur || 30; g.remain = g.total; g.running = false;
+  g.total = store.dur; g.remain = g.total; g.running = false;
   document.getElementById("guide").style.display = "flex";
   renderGuide();
 }
@@ -411,7 +413,7 @@ function guideClose(){
 function renderGuide(){
   var k = todayKey(), d = getDay(k);
   var s = STANCES[g.i];
-  var cn = "一二三四五六七八九十".charAt(Math.min(g.i,9)) + (g.i>=9?["","一","二","三","四","五","六","七","八"][g.i-8]:"");
+  var cn = cnNum(g.i + 1);
   document.getElementById("gRoundLbl").textContent = "今日第 " + Math.min(d.r+1,3) + " 遍";
   document.getElementById("gNo").textContent = "第" + cn + "势 · " + s.g + (d.cur[g.i]?" · 已完成":"");
   document.getElementById("gName").textContent = s.name + (s.star?" ★":"");
@@ -420,38 +422,81 @@ function renderGuide(){
   var done = d.cur.filter(Boolean).length;
   document.getElementById("gPrev").style.visibility = g.i===0 ? "hidden":"visible";
   updateTimerUI();
+  speak("第" + cn + "势, " + s.name);
 }
-function beep(){
+function getCtx(){
   try{
-    var AC = window.AudioContext || window.webkitAudioContext;
-    if(!AC) return;
-    var ac = new AC();
-    [0,0.25].forEach(function(t){
-      var o = ac.createOscillator(), gn = ac.createGain();
-      o.frequency.value = 880; o.connect(gn); gn.connect(ac.destination);
-      gn.gain.setValueAtTime(0.12, ac.currentTime+t);
-      gn.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+t+0.18);
-      o.start(ac.currentTime+t); o.stop(ac.currentTime+t+0.2);
-    });
+    if(!actx){
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return null;
+      actx = new AC();
+    }
+    if(actx.state === "suspended"){ actx.resume(); }
+    return actx;
+  }catch(e){ return null; }
+}
+function tone(freq, at, dur, vol){
+  var ac = getCtx();
+  if(!ac) return;
+  try{
+    var o = ac.createOscillator(), gn = ac.createGain();
+    o.type = "sine";
+    o.frequency.value = freq;
+    o.connect(gn); gn.connect(ac.destination);
+    var t = ac.currentTime + at;
+    gn.gain.setValueAtTime(vol, t);
+    gn.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.start(t); o.stop(t + dur + 0.02);
   }catch(e){}
+}
+/* 每秒一声轻"滴" */
+function tick(){ tone(1150, 0, 0.06, 0.06); }
+/* 计时结束双声提示 */
+function beep(){ tone(880, 0, 0.18, 0.12); tone(880, 0.25, 0.18, 0.12); }
+/* 中文序数(1~18): 一 ... 十, 十一 ... 十八 */
+function cnNum(n){
+  var d = "一二三四五六七八九十";
+  if(n < 10) return d.charAt(n-1);
+  if(n === 10) return "十";
+  return "十" + d.charAt(n-11);
+}
+/* 语音播报(中文) */
+function speak(txt){
+  try{
+    if(store.voice === false) return;
+    if(!("speechSynthesis" in window)) return;
+    var u = new SpeechSynthesisUtterance(txt);
+    u.lang = "zh-CN";
+    u.rate = 0.95;
+    var vs = speechSynthesis.getVoices();
+    for(var i = 0; i < vs.length; i++){
+      if(/^zh([-_]|$)/i.test(vs[i].lang) || /中文|普通话|Chinese/i.test(vs[i].name)){ u.voice = vs[i]; break; }
+    }
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+var actx = null;
+function startTimer(){
+  if(g.total===0){ toast("不计时模式 · 自由练习", 1400); return; }
+  g.running = true;
+  tick();
+  g.int = setInterval(function(){
+    g.remain--;
+    if(g.remain<=0){
+      stopTimer(); g.remain = g.total;
+      beep(); buzz(120); toast("计时到 · 可换下一势", 1500);
+    }else{
+      tick();
+    }
+    updateTimerUI();
+  },1000);
 }
 function updateTimerUI(){
   var arc = document.getElementById("tArc");
   var frac = g.total>0 ? g.remain/g.total : 0;
   arc.setAttribute("stroke-dashoffset", String(C*(1-frac)));
   document.getElementById("tNum").textContent = g.total===0 ? "∞" : g.remain;
-}
-function startTimer(){
-  if(g.total===0){ toast("不计时模式 · 自由练习", 1400); return; }
-  g.running = true;
-  g.int = setInterval(function(){
-    g.remain--;
-    if(g.remain<=0){
-      stopTimer(); g.remain = g.total;
-      beep(); buzz(120); toast("计时到 · 可换下一势", 1500);
-    }
-    updateTimerUI();
-  },1000);
 }
 function stopTimer(){ g.running=false; if(g.int){clearInterval(g.int); g.int=null;} }
 
@@ -497,6 +542,7 @@ function renderRank(){
 /* ================= 事件绑定 ================= */
 function init(){
   load();
+  try{ if("speechSynthesis" in window){ speechSynthesis.getVoices(); } }catch(e){} /* 预热语音列表 */
   calY = new Date().getFullYear(); calM = new Date().getMonth();
   renderToday();
 
@@ -515,6 +561,19 @@ function init(){
 
   document.getElementById("btnStart").addEventListener("click", guideOpen);
   document.getElementById("gClose").addEventListener("click", guideClose);
+  // 播报开关
+  var vt = document.getElementById("voiceToggle");
+  function refreshVT(){ vt.textContent = (store.voice === false) ? "🔇 已静音" : "🔊 播报"; }
+  vt.addEventListener("click", function(){
+    store.voice = (store.voice === false);
+    save(); refreshVT();
+    if(store.voice){ speak("语音播报已开启"); } else { try{ speechSynthesis.cancel(); }catch(e){} toast("语音播报已关闭", 1200); }
+  });
+  refreshVT();
+  // 点击势名重听播报
+  document.getElementById("gName").addEventListener("click", function(){
+    speak("第" + cnNum(g.i+1) + "势, " + STANCES[g.i].name);
+  });
   document.getElementById("gPrev").addEventListener("click", function(){ if(g.i>0){g.i--; renderGuide();} });
   document.getElementById("gNext").addEventListener("click", function(){
     if(g.i<17){ g.i++; renderGuide(); } else { toast("十八势已毕", 1500); }
@@ -544,12 +603,18 @@ function init(){
       g.total = store.dur; g.remain = g.total; stopTimer(); updateTimerUI(); save();
     });
   });
-  if(store.dur!==30){
-    document.querySelectorAll("#durSel span").forEach(function(x){
-      x.classList.toggle("on", parseInt(x.getAttribute("data-d"),10)===store.dur);
-    });
-    g.total = store.dur; g.remain = g.total;
+  var durMatched = false;
+  document.querySelectorAll("#durSel span").forEach(function(x){
+    var on = parseInt(x.getAttribute("data-d"),10) === store.dur;
+    if(on) durMatched = true;
+    x.classList.toggle("on", on);
+  });
+  if(!durMatched){
+    store.dur = 15; save();
+    var el15 = document.querySelector('#durSel span[data-d="15"]');
+    if(el15) el15.classList.add("on");
   }
+  g.total = store.dur; g.remain = g.total;
 
   document.getElementById("calPrev").addEventListener("click", function(){
     calM--; if(calM<0){calM=11;calY--;} renderCal();
