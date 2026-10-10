@@ -130,7 +130,7 @@
 <div id="app">
   <header>
     <h1>天竺按摩 · 十八势</h1>
-    <div class="src">《备急千金要方·卷二十七·按摩法》</div>
+    <div class="src">《备急千金要方·卷二十七·按摩法》 · v4</div>
   </header>
 
   <!-- ================= 今日 ================= -->
@@ -209,6 +209,13 @@
         <li>注意: 手机处于静音模式时, 播报与滴声会静音; 练习时请调为响铃。</li>
         <li>在手机浏览器中可将本页"添加到主屏幕", 即可像 App 一样打开。</li>
       </ul>
+      <p style="margin-top:10px">
+        <button class="g-btn" id="testTick" style="margin-right:10px">试听滴声</button>
+        <button class="g-btn" id="testSpeak">试听语音播报</button>
+      </p>
+      <p style="font-size:12px;color:#a99e8a;margin-top:10px">
+        当前版本: v4 · 若无声音: 确认手机侧边静音键已关、音量已开, 再点上方按钮测试; 仍无声请彻底关闭应用重开一次。
+      </p>
     </div>
   </section>
 
@@ -338,7 +345,6 @@ function toast(msg, ms){
   if(toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(function(){ t.style.display = "none"; }, ms||1800);
 }
-function buzz(ms){ try{ if(navigator.vibrate) navigator.vibrate(ms||25); }catch(e){} }
 
 /* ================= 今日页渲染 ================= */
 function renderToday(){
@@ -386,11 +392,11 @@ function renderToday(){
 function toggle(i){
   var k = todayKey(), d = getDay(k);
   d.cur[i] = !d.cur[i];
-  if(d.cur[i]){ d.sc[i] = (d.sc[i]||0)+1; buzz(20); }
+  if(d.cur[i]){ d.sc[i] = (d.sc[i]||0)+1; }
   if(d.cur.every(Boolean)){
     d.r += 1; d.cur = new Array(18).fill(false);
-    if(d.r>=3){ toast("今日三遍圆满! 补益延年, 眼明轻健", 2600); buzz(80); }
-    else{ toast("第 "+d.r+" 遍完成 ✓ 还差 "+(3-d.r)+" 遍", 2000); buzz(50); }
+    if(d.r>=3){ toast("今日三遍圆满! 补益延年, 眼明轻健", 2600); }
+    else{ toast("第 "+d.r+" 遍完成 ✓ 还差 "+(3-d.r)+" 遍", 2000); }
   }
   save(); renderToday();
 }
@@ -476,6 +482,26 @@ function speak(txt){
     speechSynthesis.speak(u);
   }catch(e){}
 }
+/* iOS 解锁: 首次触摸/点击时(手势内)激活音频通道与语音, 否则iOS会静音拦截 */
+var audioUnlocked = false;
+function unlockAudio(){
+  if(audioUnlocked) return;
+  audioUnlocked = true;
+  try{
+    var ac = getCtx();
+    if(ac && ac.state === "suspended"){ ac.resume(); }
+    tone(1, 0, 0.02, 0.0001); /* 无声短音, 强制建立音频通道 */
+  }catch(e){}
+  try{
+    if("speechSynthesis" in window){
+      var u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0;
+      speechSynthesis.speak(u);
+    }
+  }catch(e){}
+}
+document.addEventListener("touchstart", unlockAudio, { once:true, passive:true });
+document.addEventListener("click", unlockAudio, { once:true, passive:true });
 var actx = null;
 function startTimer(){
   if(g.total===0){ toast("不计时模式 · 自由练习", 1400); return; }
@@ -485,7 +511,7 @@ function startTimer(){
     g.remain--;
     if(g.remain<=0){
       stopTimer(); g.remain = g.total;
-      beep(); buzz(120); toast("计时到 · 可换下一势", 1500);
+      beep(); toast("计时到 · 可换下一势", 1500);
     }else{
       tick();
     }
@@ -570,6 +596,13 @@ function init(){
     if(store.voice){ speak("语音播报已开启"); } else { try{ speechSynthesis.cancel(); }catch(e){} toast("语音播报已关闭", 1200); }
   });
   refreshVT();
+  // 试听按钮(兼作音频解锁自检)
+  document.getElementById("testTick").addEventListener("click", function(){
+    unlockAudio(); tick(); setTimeout(tick, 400);
+  });
+  document.getElementById("testSpeak").addEventListener("click", function(){
+    unlockAudio(); speak("第一势, 如洗手法");
+  });
   // 点击势名重听播报
   document.getElementById("gName").addEventListener("click", function(){
     speak("第" + cnNum(g.i+1) + "势, " + STANCES[g.i].name);
