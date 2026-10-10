@@ -1,0 +1,15 @@
+{
+  "name": "天竺按摩打卡",
+  "short_name": "天竺按摩",
+  "description": "天竺国按摩十八势每日打卡 · 备急千金要方",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f1e4",
+  "theme_color": "#b3432b",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#b3432b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>天竺按摩·十八势打卡</title>
+<style>
+  :root{
+    --paper:#f6f1e4; --card:#fffdf6; --ink:#3b342c; --sub:#8a8071;
+    --red:#b3432b; --red-soft:#f3ded7; --gold:#c8a35a; --green:#5a7d4f;
+    --line:#e6ddc9; --kai:"Kaiti SC","STKaiti","KaiTi","楷体",serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--paper);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei",sans-serif;}
+  body{font-size:16px;line-height:1.6}
+  #app{max-width:460px;margin:0 auto;padding:14px 14px calc(76px + env(safe-area-inset-bottom));position:relative}
+  /* ---------- 头部 ---------- */
+  header{text-align:center;padding:10px 0 4px}
+  header h1{font-family:var(--kai);font-size:26px;letter-spacing:2px;color:var(--red)}
+  header .src{font-size:12px;color:var(--sub);letter-spacing:1px}
+  .quote{font-family:var(--kai);background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:10px 14px;margin:10px 0;font-size:14px;color:#6b6152;text-align:center}
+  /* ---------- 统计条 ---------- */
+  .statrow{display:flex;gap:8px;margin:6px 0 10px}
+  .stat{flex:1;background:var(--card);border:1px solid var(--line);border-radius:10px;text-align:center;padding:8px 4px}
+  .stat b{display:block;font-size:22px;color:var(--red);font-family:var(--kai)}
+  .stat span{font-size:11px;color:var(--sub)}
+  .dateline{text-align:center;color:var(--sub);font-size:13px;margin-bottom:2px}
+  /* ---------- 三遍印章 ---------- */
+  .stamps{display:flex;justify-content:center;gap:26px;margin:8px 0 2px}
+  .stamp{width:52px;height:52px;border-radius:50%;border:2.5px solid var(--red);color:var(--red);
+    display:flex;align-items:center;justify-content:center;font-family:var(--kai);font-size:17px;
+    position:relative;background:transparent;opacity:.35}
+  .stamp.on{opacity:1;background:var(--red);color:#fff8ec;box-shadow:0 2px 10px rgba(179,67,43,.35)}
+  .stamp small{position:absolute;bottom:-18px;font-size:10px;color:var(--sub);font-family:sans-serif}
+  .roundbar{margin:22px 2px 8px;text-align:center}
+  .roundbar .lbl{font-size:13px;color:var(--sub)}
+  .roundbar .bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:5px}
+  .roundbar .fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--red));width:0;transition:width .3s;border-radius:4px}
+  /* ---------- 分组与势 ---------- */
+  .group{margin-top:14px}
+  .group h3{font-size:13px;color:var(--sub);font-weight:600;letter-spacing:2px;margin:0 2px 6px;display:flex;align-items:center;gap:6px}
+  .group h3::after{content:"";flex:1;height:1px;background:var(--line)}
+  .stance{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;user-select:none;transition:transform .06s}
+  .stance:active{transform:scale(.98)}
+  .stance.done{background:var(--red-soft);border-color:#e0b7aa}
+  .seal{flex:none;width:34px;height:34px;border-radius:50%;border:2px solid var(--red);color:var(--red);
+    display:flex;align-items:center;justify-content:center;font-family:var(--kai);font-size:16px;font-weight:700}
+  .stance.done .seal{background:var(--red);color:#fff8ec}
+  .st-main{flex:1;min-width:0}
+  .st-name{font-weight:600;font-size:15.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .tag{font-size:10px;color:#9c6b1f;background:#f5e8cd;border-radius:4px;padding:0 4px;font-weight:400}
+  .st-orig{font-family:var(--kai);font-size:12.5px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ck{flex:none;width:26px;height:26px;border-radius:50%;border:2px solid #d8cdb6;display:flex;align-items:center;justify-content:center}
+  .stance.done .ck{border-color:var(--red);background:var(--red);color:#fff8ec}
+  .ck::after{content:"✓";font-size:15px;color:transparent;font-weight:700}
+  .stance.done .ck::after{color:#fff8ec}
+  /* ---------- 底部按钮与标签栏 ---------- */
+  .startbtn{display:block;width:100%;margin:6px 0 2px;
+    background:var(--red);color:#fff8ec;border:none;border-radius:22px;padding:13px 34px;font-size:16px;
+    letter-spacing:2px;box-shadow:0 3px 10px rgba(179,67,43,.28);z-index:30;cursor:pointer;font-family:var(--kai)}
+  nav{position:fixed;bottom:0;left:0;right:0;background:#fffdf6ee;border-top:1px solid var(--line);
+    display:flex;justify-content:space-around;padding-bottom:env(safe-area-inset-bottom);z-index:40;backdrop-filter:blur(8px)}
+  nav .nv{flex:1;text-align:center;padding:9px 0 7px;color:var(--sub);font-size:12px;cursor:pointer;letter-spacing:1px}
+  nav .nv b{display:block;font-size:19px;font-family:var(--kai);font-weight:400}
+  nav .nv.act{color:var(--red)}
+  /* ---------- 引导练习(全屏) ---------- */
+  #guide{position:fixed;inset:0;background:var(--paper);z-index:60;display:none;flex-direction:column;
+    max-width:460px;margin:0 auto;padding:calc(12px + env(safe-area-inset-top)) 16px 16px}
+  #guide .g-top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--sub)}
+  #guide .g-close{font-size:26px;color:var(--sub);cursor:pointer;padding:0 6px;line-height:1}
+  .g-card{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center;min-height:0}
+  .g-no{font-size:13px;color:var(--gold);letter-spacing:4px}
+  .g-name{font-family:var(--kai);font-size:30px;color:var(--red);margin:2px 0 6px;letter-spacing:2px}
+  .g-orig{font-family:var(--kai);font-size:15px;color:#6b6152;background:var(--card);border:1px dashed var(--line);
+    border-radius:10px;padding:8px 12px;margin:0 auto 10px;max-width:340px}
+  .g-how{font-size:15px;max-width:330px;margin:0 auto}
+  .timer{position:relative;width:150px;height:150px;margin:16px auto}
+  .timer svg{transform:rotate(-90deg)}
+  .timer .ttxt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer}
+  .timer .num{font-size:34px;font-family:var(--kai);color:var(--ink)}
+  .timer .hint{font-size:11px;color:var(--sub)}
+  .g-ctrl{display:flex;gap:12px;justify-content:center;margin:4px 0 10px}
+  .g-ctrl button, .g-btn{border:1.5px solid var(--red);background:transparent;color:var(--red);border-radius:20px;
+    padding:9px 22px;font-size:15px;letter-spacing:1px;cursor:pointer;font-family:var(--kai)}
+  .g-btn.solid{background:var(--red);color:#fff8ec}
+  .dursel{display:flex;justify-content:center;gap:8px;margin-bottom:8px}
+  .dursel span{font-size:12px;border:1px solid var(--line);border-radius:12px;padding:3px 10px;color:var(--sub);cursor:pointer}
+  .dursel span.on{border-color:var(--red);color:var(--red);background:var(--red-soft)}
+  /* ---------- 记录页 ---------- */
+  .cal{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px}
+  .cal .cal-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:14px}
+  .cal .cal-nav b{font-family:var(--kai);letter-spacing:1px}
+  .cal .cal-nav i{font-style:normal;color:var(--red);cursor:pointer;padding:2px 10px}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:12px}
+  .cal-grid .wd{color:var(--sub);font-size:11px}
+  .cell{aspect-ratio:1;border-radius:7px;background:#efe8d6;display:flex;align-items:center;justify-content:center;color:#b5aa93}
+  .cell.r1{background:#ecc9bc;color:#8c3a26}.cell.r2{background:#dda08d;color:#7c2f1d}.cell.r3{background:var(--red);color:#fff5e8}
+  .cell.today{outline:2px solid var(--gold)}
+  .ranklist{margin-top:8px}
+  .rank{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:6px;font-size:14px}
+  .rank .pct{margin-left:auto;color:var(--sub);font-size:12px}
+  .btnrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .btnrow button{flex:1;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:9px 4px;font-size:13px;cursor:pointer;min-width:90px}
+  .btnrow button.warn{border-color:#d98a7a;color:var(--red)}
+  textarea.io{width:100%;height:90px;border:1px solid var(--line);border-radius:10px;background:var(--card);
+    font-size:11px;padding:8px;margin-top:8px;display:none;resize:none}
+  /* ---------- 心法页 ---------- */
+  .doc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:12px;font-size:14.5px}
+  .doc h3{font-family:var(--kai);color:var(--red);font-size:18px;margin-bottom:6px;letter-spacing:2px}
+  .doc p{margin:5px 0;color:#4c4438}
+  .doc .q{font-family:var(--kai);color:#6b6152;background:var(--paper);border-radius:8px;padding:6px 10px;margin:6px 0;font-size:14px}
+  .doc ul{padding-left:20px}
+  .doc li{margin:4px 0}
+  /* ---------- Toast ---------- */
+  #toast{position:fixed;left:50%;top:18%;transform:translateX(-50%);background:rgba(59,52,44,.92);color:#fff8ec;
+    padding:10px 22px;border-radius:22px;font-size:14px;z-index:99;display:none;max-width:86%;text-align:center;
+    font-family:var(--kai);letter-spacing:1px}
+  section{display:none}section.show{display:block}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>天竺按摩 · 十八势</h1>
+    <div class="src">《备急千金要方·卷二十七·按摩法》</div>
+  </header>
+
+  <!-- ================= 今日 ================= -->
+  <section id="tab-today" class="show">
+    <div class="quote" id="dailyQuote"></div>
+    <div class="dateline" id="dateline"></div>
+    <div class="statrow">
+      <div class="stat"><b id="stStreak">0</b><span>连续天数</span></div>
+      <div class="stat"><b id="stTotalR">0</b><span>累计遍数</span></div>
+      <div class="stat"><b id="stDays">0</b><span>累计天数</span></div>
+    </div>
+    <div class="stamps" id="stamps">
+      <div class="stamp" data-r="1">壹<small>第一遍</small></div>
+      <div class="stamp" data-r="2">贰<small>第二遍</small></div>
+      <div class="stamp" data-r="3">叁<small>第三遍</small></div>
+    </div>
+    <div class="roundbar">
+      <div class="lbl" id="roundLbl">今日第 1 遍 · 0 / 18</div>
+      <div class="bar"><div class="fill" id="roundFill"></div></div>
+    </div>
+    <button class="startbtn" id="btnStart">开 始 练 习</button>
+    <div id="stanceList"></div>
+  </section>
+
+  <!-- ================= 记录 ================= -->
+  <section id="tab-record">
+    <div class="quote">「行不仓促, 功不虚弃」—— 记录即功课</div>
+    <div class="cal">
+      <div class="cal-nav"><i id="calPrev">‹</i><b id="calTitle"></b><i id="calNext">›</i></div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+    <div class="ranklist">
+      <div style="font-size:13px;color:var(--sub);margin:12px 2px 6px">常被跳过的势(完成率最低)</div>
+      <div id="rankBox"></div>
+    </div>
+    <div class="btnrow">
+      <button id="btnExport">导出备份</button>
+      <button id="btnImport">导入备份</button>
+      <button id="btnReset" class="warn">清空记录</button>
+    </div>
+    <textarea id="ioBox" class="io" placeholder="导出的备份文本会显示在这里; 导入时请把备份文本粘贴到这里"></textarea>
+  </section>
+
+  <!-- ================= 心法 ================= -->
+  <section id="tab-doc">
+    <div class="doc">
+      <h3>出处总纲</h3>
+      <p>天竺国按摩法载于唐代孙思邈《备急千金要方》卷二十七·养性·按摩法, 原注"此是婆罗门法", 共十八势。</p>
+      <p class="q">"但是老人日能依此三遍者, 一月后百病除, 行及奔马, 补益延年, 能食, 眼明轻健, 不复疲乏。"</p>
+      <p>要点: <b>每日三遍, 一月为期</b>; 每势左右各 3~5 次, 动作徐缓, 配合自然呼吸。</p>
+    </div>
+    <div class="doc">
+      <h3>练习要点</h3>
+      <ul>
+        <li>晨起或睡前皆可; 千金主张晨起导引, "小有不好, 即按摩挼捺, 令百节通利"。</li>
+        <li>以身热微汗、舒适为度, 忌大力硬抻——"莫久行久立, 久坐久卧"。</li>
+        <li>标「气色」的势(挽弓、拓石、开胸、排山、抽胁、反捶背)尤宜舒展肝脾、通畅阳明经气。</li>
+        <li>练后勿当风、勿即洗冷水。</li>
+      </ul>
+    </div>
+    <div class="doc">
+      <h3>安全提示</h3>
+      <ul>
+        <li>第15势(立地反拗身)血压偏高、心脑血管不适者请略过。</li>
+        <li>腰椎有疾者, 第4、9、11势减小幅度; 站立各势注意防跌倒。</li>
+        <li>有骨关节疾病、术后或孕期, 请先咨询医生再练习。</li>
+        <li>本应用为养生打卡工具, 不构成医疗建议。</li>
+      </ul>
+    </div>
+    <div class="doc">
+      <h3>使用说明</h3>
+      <ul>
+        <li>数据保存在本机浏览器中(localStorage), 不上传任何服务器; 换手机或清理浏览器前请先"导出备份"。</li>
+        <li>点「开始练习」进入引导模式: 每势可计时, 计时结束自动提示, 也可不计时自由练习。</li>
+        <li>在手机浏览器中可将本页"添加到主屏幕", 即可像 App 一样打开。</li>
+      </ul>
+    </div>
+  </section>
+
+  <nav>
+    <div class="nv act" data-tab="today"><b>今</b>今日</div>
+    <div class="nv" data-tab="record"><b>录</b>记录</div>
+    <div class="nv" data-tab="doc"><b>诀</b>心法</div>
+  </nav>
+</div>
+
+<!-- ================= 引导练习层 ================= -->
+<div id="guide">
+  <div class="g-top">
+    <span id="gRoundLbl">今日第 1 遍</span>
+    <span>天竺按摩</span>
+    <span class="g-close" id="gClose">×</span>
+  </div>
+  <div class="g-card">
+    <div class="g-no" id="gNo">第一势 · 上肢与胸</div>
+    <div class="g-name" id="gName">如洗手法</div>
+    <div class="g-orig" id="gOrig">两手相捉纽捩, 如洗手法</div>
+    <div class="g-how" id="gHow"></div>
+    <div class="timer" id="timerBox">
+      <svg width="150" height="150">
+        <circle cx="75" cy="75" r="66" fill="none" stroke="#e6ddc9" stroke-width="8"/>
+        <circle id="tArc" cx="75" cy="75" r="66" fill="none" stroke="#b3432b" stroke-width="8"
+          stroke-linecap="round" stroke-dasharray="414.7" stroke-dashoffset="0"/>
+      </svg>
+      <div class="ttxt" id="tToggle"><div class="num" id="tNum">30</div><div class="hint">点击 开始/暂停</div></div>
+    </div>
+    <div class="dursel" id="durSel">
+      <span data-d="15">15秒</span><span data-d="30" class="on">30秒</span>
+      <span data-d="45">45秒</span><span data-d="60">60秒</span><span data-d="0">不计时</span>
+    </div>
+    <div class="g-ctrl">
+      <button id="gPrev">上一势</button>
+      <button id="gNext">下一势</button>
+    </div>
+    <div class="g-ctrl">
+      <button id="gDone" class="g-btn solid">✓ 完成此势</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+try{if("serviceWorker" in navigator && location.protocol.startsWith("http")){navigator.serviceWorker.register("sw.js");}}catch(e){}
+/* ================= 数据: 十八势 ================= */
+var STANCES = [
+  {g:"上肢与胸", name:"如洗手法", orig:"两手相捉纽捩, 如洗手法", how:"十指交叉相握, 如搓洗双手般正反旋转各数遍, 活利腕关节。"},
+  {g:"上肢与胸", name:"翻覆向胸", orig:"两手浅相叉, 翻覆向胸", how:"双手手指浅浅相扣, 翻掌向前、覆掌向胸来回翻转, 反复数次。"},
+  {g:"上肢与胸", name:"共按胫", orig:"两手相捉, 共按胫, 左右同", how:"两手相握, 俯身共按于小腿胫前, 左右交替。"},
+  {g:"上肢与胸", name:"按髀捩身", orig:"两手相重按髀, 徐徐捩身, 左右同", how:"双手重叠按于大腿上, 随身体缓慢左右扭转。"},
+  {g:"上肢与胸", name:"挽弓势", orig:"以手如挽五石力弓, 左右同", how:"一手前伸、一手如挽强弓后拉, 左右交替, 重在扩胸。", star:true},
+  {g:"上肢与胸", name:"向前筑拳", orig:"作拳向前筑, 左右同", how:"握拳向前缓力冲出, 左右交替。"},
+  {g:"上肢与胸", name:"拓石势", orig:"如拓石法, 左右同", how:"双臂如向上托举巨石, 缓缓上举数遍。", star:true},
+  {g:"上肢与胸", name:"开胸势", orig:"作拳却顿, 此是开胸, 左右同", how:"握拳向体侧后方展臂振顿数下, 宣畅胸中气机。", star:true},
+  {g:"腰背与胁肋", name:"排山势", orig:"大坐斜身偏欹, 如排山, 左右同", how:"端坐, 上身如推山般侧倾, 左右交替, 拉伸侧腰。", star:true},
+  {g:"腰背与胁肋", name:"抽胁势", orig:"两手抱头宛转髀上, 此是抽胁", how:"坐位双手抱头, 上身在大腿上俯仰宛转, 舒展两胁。", star:true},
+  {g:"腰背与胁肋", name:"曲脊三举", orig:"两手据地, 缩身曲脊, 向上三举", how:"跪撑或蹲撑, 弓背收身, 向上拱举三次(近今之'猫式')。"},
+  {g:"腰背与胁肋", name:"反捶背", orig:"以手反捶背上, 左右同", how:"手绕至背后, 沿脊柱两侧轻轻捶打, 左右交替。", star:true},
+  {g:"下肢与整体", name:"虚掣脚", orig:"大坐伸两脚, 即以一脚向前虚掣, 左右同", how:"端坐伸直双腿, 一脚勾脚向前虚虚拉伸, 左右交替。"},
+  {g:"下肢与整体", name:"虎视法", orig:"两手拒地回顾, 此是虎视法, 左右同", how:"双手按地或按膝, 身体不动, 只回头向后望, 左右交替。"},
+  {g:"下肢与整体", name:"反拗身", orig:"立地反拗身三举", how:"站立, 身体缓慢后仰伸展三次; 幅度宜小宜慢, 血压高者略过。"},
+  {g:"下肢与整体", name:"踏掌势", orig:"两手急相叉, 以脚踏手中, 左右同", how:"坐位, 双手急速相扣相握, 以脚踏在掌中相互拉抻, 左右交替。"},
+  {g:"下肢与整体", name:"虚踏脚", orig:"起立以脚前后虚踏, 左右同", how:"站起, 双脚前后虚踩如蹬踏, 左右交替, 活动下肢。"},
+  {g:"下肢与整体", name:"按膝势", orig:"大坐伸两脚, 用两手相勾所著膝上, 以手按之, 左右同", how:"端坐伸直双腿, 双手交互相勾按于膝上, 俯身缓缓按压。"}
+];
+var QUOTES = [
+  ["但是老人日能依此三遍者, 一月后百病除, 行及奔马, 补益延年, 能食, 眼明轻健, 不复疲乏。","千金要方·按摩法"],
+  ["小有不好, 即按摩挼捺, 令百节通利, 泄其邪气。","千金要方·道林养性"],
+  ["养性之道, 莫久行久立, 久坐久卧, 久视久听。","千金要方·道林养性"],
+  ["形与神俱, 而尽终其天年, 度百岁乃去。","素问·上古天真论"],
+  ["形劳而不倦, 气从以顺。","素问·上古天真论"],
+  ["智者之养生也, 必顺四时而适寒暑, 和喜怒而安居处。","灵枢·本神"],
+  ["春夏养阳, 秋冬养阴, 以从其根。","素问·四气调神大论"],
+  ["食能排邪而安脏腑, 悦神爽志, 以资血气。","千金要方·食治"]
+];
+
+/* ================= 存储 ================= */
+var KEY = "tz18_v1";
+var store = {days:{}, dur:30};
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(raw){ var o = JSON.parse(raw); if(o && o.days){ store = o; } }
+  }catch(e){}
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(store)); }catch(e){} }
+function fmtDate(d){
+  return d.getFullYear() + "-" + ("0"+(d.getMonth()+1)).slice(-2) + "-" + ("0"+d.getDate()).slice(-2);
+}
+function todayKey(){ return fmtDate(new Date()); }
+function getDay(k){
+  if(!store.days[k]) store.days[k] = {r:0, cur:new Array(18).fill(false), sc:new Array(18).fill(0)};
+  var d = store.days[k];
+  if(!Array.isArray(d.cur) || d.cur.length!==18) d.cur = new Array(18).fill(false);
+  if(!Array.isArray(d.sc) || d.sc.length!==18) d.sc = new Array(18).fill(0);
+  return d;
+}
+
+/* ================= 统计 ================= */
+function streak(){
+  var n = 0, d = new Date();
+  var k = todayKey();
+  if(!(store.days[k] && store.days[k].r >= 1)) d.setDate(d.getDate()-1); // 今天未打则从昨天起算连续
+  while(true){
+    var kk = fmtDate(d);
+    if(store.days[kk] && store.days[kk].r >= 1){ n++; d.setDate(d.getDate()-1); }
+    else break;
+  }
+  return n;
+}
+function totals(){
+  var days=0, rounds=0;
+  for(var k in store.days){ if(store.days[k].r>0){ days++; rounds += store.days[k].r; } }
+  return {days:days, rounds:rounds};
+}
+
+/* ================= Toast ================= */
+var toastTimer = null;
+function toast(msg, ms){
+  var t = document.getElementById("toast");
+  t.innerHTML = msg; t.style.display = "block";
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.style.display = "none"; }, ms||1800);
+}
+function buzz(ms){ try{ if(navigator.vibrate) navigator.vibrate(ms||25); }catch(e){} }
+
+/* ================= 今日页渲染 ================= */
+function renderToday(){
+  var k = todayKey(), d = getDay(k);
+  var q = QUOTES[Math.floor((new Date().getTime()/86400000)) % QUOTES.length];
+  document.getElementById("dailyQuote").innerHTML = "「" + q[0] + "」<br><span style='font-size:11px;color:#a99e8a'>—— " + q[1] + "</span>";
+  var now = new Date();
+  document.getElementById("dateline").textContent =
+    now.getFullYear()+"年"+(now.getMonth()+1)+"月"+now.getDate()+"日 · "+["周日","周一","周二","周三","周四","周五","周六"][now.getDay()];
+  document.getElementById("stStreak").textContent = streak();
+  var tt = totals();
+  document.getElementById("stTotalR").textContent = tt.rounds;
+  document.getElementById("stDays").textContent = tt.days;
+  var stamps = document.querySelectorAll(".stamp");
+  for(var i=0;i<stamps.length;i++){
+    stamps[i].classList.toggle("on", d.r >= parseInt(stamps[i].getAttribute("data-r"),10));
+  }
+  var doneN = d.cur.filter(Boolean).length;
+  var roundNo = Math.min(d.r+1, 3);
+  if(d.r>=3){ document.getElementById("roundLbl").textContent = "今日三遍圆满 · 功不虚弃"; }
+  else{ document.getElementById("roundLbl").textContent = "今日第 " + roundNo + " 遍 · " + doneN + " / 18"; }
+  document.getElementById("roundFill").style.width = (doneN/18*100) + "%";
+
+  var box = document.getElementById("stanceList");
+  box.innerHTML = "";
+  var lastG = "";
+  STANCES.forEach(function(s, i){
+    if(s.g !== lastG){
+      lastG = s.g;
+      var h = document.createElement("div"); h.className="group";
+      h.innerHTML = "<h3>"+s.g+"</h3>";
+      box.appendChild(h);
+    }
+    var el = document.createElement("div");
+    el.className = "stance" + (d.cur[i] ? " done" : "");
+    el.innerHTML =
+      "<div class='seal'>"+(i+1)+"</div>"+
+      "<div class='st-main'><div class='st-name'>"+s.name+(s.star?"<span class='tag'>气色</span>":"")+"</div>"+
+      "<div class='st-orig'>"+s.orig+"</div></div>"+
+      "<div class='ck'></div>";
+    el.addEventListener("click", function(){ toggle(i); });
+    box.appendChild(el);
+  });
+}
+function toggle(i){
+  var k = todayKey(), d = getDay(k);
+  d.cur[i] = !d.cur[i];
+  if(d.cur[i]){ d.sc[i] = (d.sc[i]||0)+1; buzz(20); }
+  if(d.cur.every(Boolean)){
+    d.r += 1; d.cur = new Array(18).fill(false);
+    if(d.r>=3){ toast("今日三遍圆满! 补益延年, 眼明轻健", 2600); buzz(80); }
+    else{ toast("第 "+d.r+" 遍完成 ✓ 还差 "+(3-d.r)+" 遍", 2000); buzz(50); }
+  }
+  save(); renderToday();
+}
+
+/* ================= 引导练习 ================= */
+var g = {i:0, remain:30, total:30, running:false, int:null};
+var C = 2*Math.PI*66;
+function guideOpen(){
+  var k = todayKey(), d = getDay(k);
+  for(var i=0;i<18;i++){ if(!d.cur[i]){ g.i = i; break; } g.i = 0; }
+  g.total = store.dur || 30; g.remain = g.total; g.running = false;
+  document.getElementById("guide").style.display = "flex";
+  renderGuide();
+}
+function guideClose(){
+  stopTimer();
+  document.getElementById("guide").style.display = "none";
+  renderToday();
+}
+function renderGuide(){
+  var k = todayKey(), d = getDay(k);
+  var s = STANCES[g.i];
+  var cn = "一二三四五六七八九十".charAt(Math.min(g.i,9)) + (g.i>=9?["","一","二","三","四","五","六","七","八"][g.i-8]:"");
+  document.getElementById("gRoundLbl").textContent = "今日第 " + Math.min(d.r+1,3) + " 遍";
+  document.getElementById("gNo").textContent = "第" + cn + "势 · " + s.g + (d.cur[g.i]?" · 已完成":"");
+  document.getElementById("gName").textContent = s.name + (s.star?" ★":"");
+  document.getElementById("gOrig").textContent = s.orig;
+  document.getElementById("gHow").textContent = s.how;
+  var done = d.cur.filter(Boolean).length;
+  document.getElementById("gPrev").style.visibility = g.i===0 ? "hidden":"visible";
+  updateTimerUI();
+}
+function beep(){
+  try{
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    var ac = new AC();
+    [0,0.25].forEach(function(t){
+      var o = ac.createOscillator(), gn = ac.createGain();
+      o.frequency.value = 880; o.connect(gn); gn.connect(ac.destination);
+      gn.gain.setValueAtTime(0.12, ac.currentTime+t);
+      gn.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+t+0.18);
+      o.start(ac.currentTime+t); o.stop(ac.currentTime+t+0.2);
+    });
+  }catch(e){}
+}
+function updateTimerUI(){
+  var arc = document.getElementById("tArc");
+  var frac = g.total>0 ? g.remain/g.total : 0;
+  arc.setAttribute("stroke-dashoffset", String(C*(1-frac)));
+  document.getElementById("tNum").textContent = g.total===0 ? "∞" : g.remain;
+}
+function startTimer(){
+  if(g.total===0){ toast("不计时模式 · 自由练习", 1400); return; }
+  g.running = true;
+  g.int = setInterval(function(){
+    g.remain--;
+    if(g.remain<=0){
+      stopTimer(); g.remain = g.total;
+      beep(); buzz(120); toast("计时到 · 可换下一势", 1500);
+    }
+    updateTimerUI();
+  },1000);
+}
+function stopTimer(){ g.running=false; if(g.int){clearInterval(g.int); g.int=null;} }
+
+/* ================= 记录页 ================= */
+var calY, calM;
+function renderCal(){
+  var t = calY+"年"+(calM+1)+"月";
+  document.getElementById("calTitle").textContent = t;
+  var grid = document.getElementById("calGrid");
+  grid.innerHTML = "";
+  ["日","一","二","三","四","五","六"].forEach(function(w){
+    var e=document.createElement("div"); e.className="wd"; e.textContent=w; grid.appendChild(e);
+  });
+  var first = new Date(calY, calM, 1);
+  var days = new Date(calY, calM+1, 0).getDate();
+  for(var i=0;i<first.getDay();i++){ grid.appendChild(document.createElement("div")); }
+  var tk = todayKey();
+  for(var d=1; d<=days; d++){
+    var key = fmtDate(new Date(calY, calM, d));
+    var r = store.days[key] ? (store.days[key].r||0) : 0;
+    var c = document.createElement("div");
+    c.className = "cell" + (r>0?(" r"+Math.min(r,3)):"") + (key===tk?" today":"");
+    c.textContent = d;
+    c.title = key + " · " + r + "遍";
+    grid.appendChild(c);
+  }
+}
+function renderRank(){
+  var tt = totals();
+  var box = document.getElementById("rankBox");
+  if(tt.rounds===0){ box.innerHTML = "<div class='rank' style='color:var(--sub)'>尚无记录, 完成一整遍后这里会显示统计。</div>"; return; }
+  var arr = STANCES.map(function(s,i){
+    var c = 0; for(var k in store.days){ c += (store.days[k].sc && store.days[k].sc[i])||0; }
+    return {i:i, name:s.name, pct: Math.round(c/tt.rounds*100)};
+  });
+  arr.sort(function(a,b){ return a.pct-b.pct; });
+  box.innerHTML = arr.slice(0,3).map(function(a){
+    return "<div class='rank'><div class='seal' style='width:26px;height:26px;font-size:13px'>"+(a.i+1)+"</div>"+
+      "<span>"+a.name+"</span><span class='pct'>完成率 "+a.pct+"%</span></div>";
+  }).join("");
+}
+
+/* ================= 事件绑定 ================= */
+function init(){
+  load();
+  calY = new Date().getFullYear(); calM = new Date().getMonth();
+  renderToday();
+
+  document.querySelectorAll("nav .nv").forEach(function(nv){
+    nv.addEventListener("click", function(){
+      document.querySelectorAll("nav .nv").forEach(function(x){x.classList.remove("act");});
+      nv.classList.add("act");
+      ["today","record","doc"].forEach(function(t){
+        document.getElementById("tab-"+t).classList.toggle("show", t===nv.getAttribute("data-tab"));
+      });
+      document.getElementById("btnStart").style.display = nv.getAttribute("data-tab")==="today" ? "block":"none";
+      if(nv.getAttribute("data-tab")==="record"){ renderCal(); renderRank(); }
+      window.scrollTo(0,0);
+    });
+  });
+
+  document.getElementById("btnStart").addEventListener("click", guideOpen);
+  document.getElementById("gClose").addEventListener("click", guideClose);
+  document.getElementById("gPrev").addEventListener("click", function(){ if(g.i>0){g.i--; renderGuide();} });
+  document.getElementById("gNext").addEventListener("click", function(){
+    if(g.i<17){ g.i++; renderGuide(); } else { toast("十八势已毕", 1500); }
+  });
+  document.getElementById("gDone").addEventListener("click", function(){
+    var k = todayKey(), d = getDay(k);
+    if(!d.cur[g.i]){ toggle(g.i); }
+    if(g.i<17){ g.i++; renderGuide(); }
+    else{
+      var done = getDay(todayKey());
+      if(done.r>=3){ toast("今日三遍圆满!", 2200); guideClose(); }
+      else{ toast("十八势已毕, 今日还有 "+(3-done.r)+" 遍", 2200); g.i=0; renderGuide(); }
+    }
+  });
+  document.getElementById("timerBox").addEventListener("click", function(){
+    if(g.running){ stopTimer(); toast("已暂停", 900); }
+    else{
+      if(g.total>0 && g.remain===0){ g.remain = g.total; }
+      startTimer();
+    }
+  });
+  document.querySelectorAll("#durSel span").forEach(function(sp){
+    sp.addEventListener("click", function(){
+      document.querySelectorAll("#durSel span").forEach(function(x){x.classList.remove("on");});
+      sp.classList.add("on");
+      store.dur = parseInt(sp.getAttribute("data-d"),10);
+      g.total = store.dur; g.remain = g.total; stopTimer(); updateTimerUI(); save();
+    });
+  });
+  if(store.dur!==30){
+    document.querySelectorAll("#durSel span").forEach(function(x){
+      x.classList.toggle("on", parseInt(x.getAttribute("data-d"),10)===store.dur);
+    });
+    g.total = store.dur; g.remain = g.total;
+  }
+
+  document.getElementById("calPrev").addEventListener("click", function(){
+    calM--; if(calM<0){calM=11;calY--;} renderCal();
+  });
+  document.getElementById("calNext").addEventListener("click", function(){
+    calM++; if(calM>11){calM=0;calY++;} renderCal();
+  });
+
+  document.getElementById("btnExport").addEventListener("click", function(){
+    var io = document.getElementById("ioBox");
+    io.style.display = "block";
+    io.value = JSON.stringify(store);
+    io.select();
+    try{ document.execCommand("copy"); toast("已复制, 请妥善保存文本", 1800); }catch(e){ toast("请手动全选复制", 1600); }
+  });
+  document.getElementById("btnImport").addEventListener("click", function(){
+    var io = document.getElementById("ioBox");
+    io.style.display = "block";
+    if(io.value.trim()===""){ toast("请先把备份文本粘贴到文本框", 1800); return; }
+    try{
+      var o = JSON.parse(io.value);
+      if(!o || !o.days) throw 0;
+      store = o; save(); renderToday(); renderCal(); renderRank();
+      toast("导入成功", 1500);
+    }catch(e){ toast("备份文本无效", 1600); }
+  });
+  document.getElementById("btnReset").addEventListener("click", function(){
+    if(confirm("确定清空全部打卡记录? 此操作不可恢复(建议先导出备份)。")){
+      store = {days:{}, dur:store.dur}; save(); renderToday(); renderCal(); renderRank();
+      toast("已清空", 1400);
+    }
+  });
+}
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
