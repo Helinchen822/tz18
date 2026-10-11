@@ -95,6 +95,10 @@
   .dursel span{font-size:12px;border:1px solid var(--line);border-radius:12px;padding:3px 10px;color:var(--sub);cursor:pointer}
   .dursel span.on{border-color:var(--red);color:var(--red);background:var(--red-soft)}
   #autoToggle.auto-on{border-color:var(--red);color:var(--red);background:var(--red-soft)}
+  .stance.sel{background:#f5e8cd;border-color:#c8a35a}
+  .stance.sel .seal{background:var(--gold);border-color:#9c6b1f;color:#fff8ec}
+  .num.urgent{color:var(--red);font-weight:700;animation:tpulse 1s infinite}
+  @keyframes tpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
   /* ---------- 记录页 ---------- */
   .cal{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px}
   .cal .cal-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:14px}
@@ -131,7 +135,7 @@
 <div id="app">
   <header>
     <h1>天竺按摩 · 十八势</h1>
-    <div class="src">《备急千金要方·卷二十七·按摩法》 · v6</div>
+    <div class="src">《备急千金要方·卷二十七·按摩法》 · v7</div>
   </header>
 
   <!-- ================= 今日 ================= -->
@@ -206,6 +210,7 @@
       <ul>
         <li>数据保存在本机浏览器中(localStorage), 不上传任何服务器; 换手机或清理浏览器前请先"导出备份"。</li>
         <li>点「开始练习」进入引导模式: 每势可计时(30秒/60秒/不计时), 最后5秒有滴声提示, 计时结束自动进入下一势。</li>
+        <li>今日页点击动作条目可选中为练习起点(序号变▶, 再点取消), 此时开始练习进入"自由练习", 不计入当日遍数; 打卡完成请点右侧圆形✓。</li>
         <li>练习模式下自动语音播报: 序号+名称+动作说明(如"第三势, 共按胫。两手相握, 俯身共按于小腿胫前, 左右交替"); 点顶部「🔊 播报」可开/关, 点击大字势名可重听。</li>
         <li>「连贯模式」开启后: 计时结束自动完成当前势、播报并进入下一势, 十八势一气呵成; 每遍结束自动暂停, 点计时环继续下一遍。</li>
         <li>注意: 手机处于静音模式时, 播报与滴声会静音; 练习时请调为响铃。</li>
@@ -216,7 +221,7 @@
         <button class="g-btn" id="testSpeak">试听语音播报</button>
       </p>
       <p style="font-size:12px;color:#a99e8a;margin-top:10px">
-        当前版本: v6 · 全新计时与播报 · 若无声音: 确认手机侧边静音键已关、音量已开, 再点上方按钮测试; 仍无声请彻底关闭应用重开一次。
+        当前版本: v7 · 自由练习 · 若无声音: 确认手机侧边静音键已关、音量已开, 再点上方按钮测试; 仍无声请彻底关闭应用重开一次。
       </p>
     </div>
   </section>
@@ -362,6 +367,11 @@ function renderToday(){
   var tt = totals();
   document.getElementById("stTotalR").textContent = tt.rounds;
   document.getElementById("stDays").textContent = tt.days;
+  var sb = document.getElementById("btnStart");
+  if(sb){
+    if(selStance !== null){ sb.textContent = "▶ 从第" + cnNum(selStance+1) + "势练习 · 不计遍数"; }
+    else{ sb.textContent = "开 始 练 习"; }
+  }
   var stamps = document.querySelectorAll(".stamp");
   for(var i=0;i<stamps.length;i++){
     stamps[i].classList.toggle("on", d.r >= parseInt(stamps[i].getAttribute("data-r"),10));
@@ -383,13 +393,17 @@ function renderToday(){
       box.appendChild(h);
     }
     var el = document.createElement("div");
-    el.className = "stance" + (d.cur[i] ? " done" : "");
+    var isSel = (selStance === i);
+    el.className = "stance" + (d.cur[i] ? " done" : "") + (isSel ? " sel" : "");
     el.innerHTML =
-      "<div class='seal'>"+(i+1)+"</div>"+
+      "<div class='seal'>"+(isSel?"▶":(i+1))+"</div>"+
       "<div class='st-main'><div class='st-name'>"+s.name+(s.star?"<span class='tag'>气色</span>":"")+"</div>"+
       "<div class='st-orig'>"+s.how+"</div></div>"+
       "<div class='ck'></div>";
-    el.addEventListener("click", function(){ toggle(i); });
+    el.addEventListener("click", function(ev){
+      if(ev.target && ev.target.closest && ev.target.closest(".ck")){ toggle(i); }
+      else{ selStance = (selStance===i) ? null : i; renderToday(); }
+    });
     box.appendChild(el);
   });
 }
@@ -406,11 +420,14 @@ function toggle(i){
 }
 
 /* ================= 引导练习 ================= */
-var g = {i:0, remain:30, total:30, running:false, int:null};
+var g = {i:0, remain:30, total:30, running:false, int:null, free:false};
+var selStance = null;
 var C = 2*Math.PI*66;
-function guideOpen(){
+function guideOpen(startIdx, free){
   var k = todayKey(), d = getDay(k);
-  for(var i=0;i<18;i++){ if(!d.cur[i]){ g.i = i; break; } g.i = 0; }
+  g.free = !!free;
+  if(g.free){ g.i = (typeof startIdx === "number" && startIdx>=0 && startIdx<18) ? startIdx : 0; }
+  else{ for(var i=0;i<18;i++){ if(!d.cur[i]){ g.i = i; break; } g.i = 0; } }
   g.total = store.dur; g.remain = g.total; g.running = false;
   document.getElementById("guide").style.display = "flex";
   renderGuide();
@@ -429,6 +446,11 @@ function refreshAT(){
 }
 /* 连贯模式: 计时到自动完成当前势并进入下一势 */
 function autoAdvance(){
+  if(g.free){
+    if(g.i < 17){ g.i++; renderGuide(); g.remain = g.total; startTimer(); }
+    else{ stopTimer(); toast("十八势自由练习完毕", 2200); speak("自由练习完毕"); }
+    return;
+  }
   var k = todayKey(), d = getDay(k);
   if(!d.cur[g.i]){
     d.cur[g.i] = true;
@@ -457,6 +479,7 @@ function autoAdvance(){
   }
 }
 function guideClose(){
+  g.free = false;
   stopTimer();
   document.getElementById("guide").style.display = "none";
   renderToday();
@@ -465,7 +488,7 @@ function renderGuide(silent){
   var k = todayKey(), d = getDay(k);
   var s = STANCES[g.i];
   var cn = cnNum(g.i + 1);
-  document.getElementById("gRoundLbl").textContent = "今日第 " + Math.min(d.r+1,3) + " 遍";
+  document.getElementById("gRoundLbl").textContent = g.free ? "自由练习 · 不计入遍数" : "今日第 " + Math.min(d.r+1,3) + " 遍";
   document.getElementById("gNo").textContent = "第" + cn + "势 · " + s.g + (d.cur[g.i]?" · 已完成":"");
   document.getElementById("gName").textContent = s.name + (s.star?" ★":"");
   document.getElementById("gHow").textContent = s.how;
@@ -500,7 +523,7 @@ function tone(freq, at, dur, vol){
   }catch(e){}
 }
 /* 每秒一声轻"滴" */
-function tick(){ tone(1150, 0, 0.06, 0.06); }
+function tick(){ tone(1300, 0, 0.09, 0.16); }
 /* 计时结束双声提示 */
 function beep(){ tone(880, 0, 0.18, 0.12); tone(880, 0.25, 0.18, 0.12); }
 /* 当前势的完整播报文本: 序号+名称+动作说明 */
@@ -575,7 +598,10 @@ function updateTimerUI(){
   var arc = document.getElementById("tArc");
   var frac = g.total>0 ? g.remain/g.total : 0;
   arc.setAttribute("stroke-dashoffset", String(C*(1-frac)));
-  document.getElementById("tNum").textContent = g.total===0 ? "∞" : g.remain;
+  var numEl = document.getElementById("tNum");
+  numEl.textContent = g.total===0 ? "∞" : g.remain;
+  if(g.total>0 && g.remain<=5 && g.remain>0){ numEl.classList.add("urgent"); }
+  else{ numEl.classList.remove("urgent"); }
 }
 function stopTimer(){ g.running=false; if(g.int){clearInterval(g.int); g.int=null;} }
 
@@ -638,7 +664,10 @@ function init(){
     });
   });
 
-  document.getElementById("btnStart").addEventListener("click", guideOpen);
+  document.getElementById("btnStart").addEventListener("click", function(){
+    if(selStance !== null){ var idx = selStance; selStance = null; renderToday(); guideOpen(idx, true); }
+    else{ guideOpen(); }
+  });
   document.getElementById("gClose").addEventListener("click", guideClose);
   // 播报开关
   var vt = document.getElementById("voiceToggle");
@@ -668,6 +697,11 @@ function init(){
     else{ toast("十八势已毕", 1500); }
   });
   document.getElementById("gDone").addEventListener("click", function(){
+    if(g.free){
+      if(g.i<17){ g.i++; renderGuide(); if(autoOn()){ g.remain=g.total; startTimer(); } }
+      else{ toast("十八势自由练习完毕", 2000); speak("自由练习完毕"); guideClose(); }
+      return;
+    }
     var k = todayKey(), d = getDay(k);
     if(!d.cur[g.i]){ toggle(g.i); }
     if(g.i<17){
